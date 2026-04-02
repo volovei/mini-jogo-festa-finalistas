@@ -12,11 +12,17 @@ canvas.height = 200;
 let gameState = 'START';
 
 // Carregamento de Imagens
-const playerImg = new Image();
-playerImg.src = "player.png";
+const playerRun1 = new Image();
+playerRun1.src = "images/Chrome_T-Rex_Left_Run.webp";
 
-const obstacleImg = new Image();
-obstacleImg.src = "obstacle.png";
+const playerRun2 = new Image();
+playerRun2.src = "images/Chrome_T-Rex_Right_Run.webp";
+
+const obstacle1 = new Image();
+obstacle1.src = "images/1_Cactus_Chrome_Dino.webp";
+
+const obstacle2 = new Image();
+obstacle2.src = "images/3_Cactus_Chrome_Dino.webp";
 
 // Variáveis Globais
 let score = 0;
@@ -24,19 +30,29 @@ let gameSpeed = 6;
 const initialSpeed = 6;
 const gravity = 0.6;
 const jumpForce = -12;
-const groundY = 160; // Posição do "chão" para o personagem
+const groundY = 140; // Ajustado para a altura do dinossauro
+let frameCount = 0;
 
 // Objetos do Jogo
 const player = {
     x: 50,
     y: groundY,
-    width: 40,
-    height: 40,
+    width: 44, // Proporções aproximadas do Dino original
+    height: 47,
     vy: 0,
     jumping: false,
     
     draw() {
-        ctx.drawImage(playerImg, this.x, this.y, this.width, this.height);
+        // Animação de corrida: alterna entre as duas imagens a cada 10 frames
+        let img = playerRun1;
+        if (!this.jumping) {
+            if (Math.floor(frameCount / 10) % 2 === 0) {
+                img = playerRun1;
+            } else {
+                img = playerRun2;
+            }
+        }
+        ctx.drawImage(img, this.x, this.y, this.width, this.height);
     },
     
     jump() {
@@ -62,10 +78,8 @@ const player = {
 
 const obstacles = [];
 const obstacleConfig = {
-    width: 30,
-    height: 40,
     spawnTimer: 0,
-    minSpawnInterval: 60, // frames entre obstáculos
+    minSpawnInterval: 60,
     maxSpawnInterval: 120
 };
 
@@ -74,11 +88,13 @@ const obstacleConfig = {
  */
 
 function spawnObstacle() {
+    const isTriple = Math.random() > 0.5;
     obstacles.push({
         x: canvas.width,
-        y: groundY, // Alinhado ao chão
-        width: obstacleConfig.width,
-        height: obstacleConfig.height
+        y: isTriple ? 145 : 145, // Ajuste fino no chão para os cactos
+        width: isTriple ? 50 : 25, // Cacto triplo é mais largo
+        height: 45,
+        img: isTriple ? obstacle2 : obstacle1
     });
 }
 
@@ -126,6 +142,7 @@ canvas.addEventListener('mousedown', (e) => {
 function update() {
     if (gameState !== 'PLAYING') return;
 
+    frameCount++;
     // Aumenta velocidade gradualmente
     gameSpeed += 0.001;
     score += 0.1; // Pontuação baseada na distância
@@ -170,7 +187,7 @@ function draw() {
 
     // Desenhar Obstáculos
     for (const obs of obstacles) {
-        ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height);
+        ctx.drawImage(obs.img, obs.x, obs.y, obs.width, obs.height);
     }
 
     // UI: Pontuação
