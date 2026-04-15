@@ -630,7 +630,7 @@ function setDuckInput(active) {
 
 // Eventos (Teclado e Mobile)
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' || e.code === 'ArrowUp') {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault(); // Evita scroll da página
         handleInput();
     } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
@@ -652,7 +652,7 @@ canvas.addEventListener('mousedown', (e) => {
 
 // Eventos para terminar o salto (quando se solta a tecla/dedo)
 window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' || e.code === 'ArrowUp') {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         handleJumpEnd();
     } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         setDuckInput(false);
