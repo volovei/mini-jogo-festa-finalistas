@@ -7,8 +7,8 @@
 body {
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Evita scroll no iframe */
-    background-color: transparent; /* Permite fundo personalizado no Readymag */
+    overflow: hidden;
+    background-color: transparent;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
@@ -17,14 +17,31 @@ body {
 }
 
 #game-container {
-    width: 800px;
-    height: 200px;
+    width: 1400px;
+    height: 360px;
     position: relative;
     overflow: hidden;
 }
 
 canvas {
     display: block;
-    background-color: #ffffff;
-    border-bottom: 2px solid #333; /* Linha do chão */
+    background-color: transparent;
+}
+
+#night-background {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('imagens reais/noite.jpeg');
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.5s ease-in-out;
+    z-index: -1;
+}
+
+#night-background.active {
+    opacity: 0.5;
 }
