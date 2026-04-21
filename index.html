@@ -10,18 +10,25 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
       // Firebase configuration
       const firebaseConfig = {
+        apiKey: "AIzaSyBRKE4f7jroFokwhJlorsI3UCB4VfIj6aY",
+        authDomain: "festafinalistajogolobo.firebaseapp.com",
+        databaseURL: "https://festafinalistajogolobo-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "festafinalistajogolobo",
-        databaseURL: "https://festafinalistajogolobo-default-rtdb.europe-west1.firebasedatabase.app/",
-        // Note: Rest of config (apiKey, etc) needs to be added by user or provided
+        storageBucket: "festafinalistajogolobo.firebasestorage.app",
+        messagingSenderId: "69184567276",
+        appId: "1:69184567276:web:8a5e594acd8d036969b2c9",
+        measurementId: "G-BCERQRHBH3"
       };
 
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const rtdb = getDatabase(app);
+      const analytics = getAnalytics(app);
 
       // Expose to window for game.js
       window.firebaseDB = db;
