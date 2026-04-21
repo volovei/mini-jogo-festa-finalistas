@@ -4,8 +4,10 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 1400;
-canvas.height = 360;
+const baseWidth = 1400;
+const baseHeight = 360;
+canvas.width = baseWidth;
+canvas.height = baseHeight;
 
 // Estados do Jogo: 'START', 'PLAYING', 'GAMEOVER'
 let gameState = 'START';
@@ -999,6 +1001,59 @@ function gameLoop() {
     update();
     draw();
     requestAnimationFrame(gameLoop);
+}
+
+// Resize handler
+function resizeCanvas() {
+    const container = document.getElementById('game-container');
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const ratio = Math.min(containerWidth / baseWidth, containerHeight / baseHeight);
+
+    canvas.style.width = `${baseWidth * ratio}px`;
+    canvas.style.height = `${baseHeight * ratio}px`;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Mobile button controls
+const btnLeft = document.getElementById('btn-left');
+const btnDown = document.getElementById('btn-down');
+const btnJump = document.getElementById('btn-jump');
+
+if (btnLeft) {
+    btnLeft.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        leftInputActive = true;
+    }, { passive: false });
+    btnLeft.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        leftInputActive = false;
+    }, { passive: false });
+}
+
+if (btnDown) {
+    btnDown.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        setDuckInput(true);
+    }, { passive: false });
+    btnDown.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        setDuckInput(false);
+    }, { passive: false });
+}
+
+if (btnJump) {
+    btnJump.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleInput();
+    }, { passive: false });
+    btnJump.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleJumpEnd();
+    }, { passive: false });
 }
 
 // Iniciar Loop
