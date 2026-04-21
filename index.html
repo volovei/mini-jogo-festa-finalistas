@@ -35,6 +35,7 @@
       window.firebaseRTDB = rtdb;
       window.firestore = { collection, addDoc, getDocs, query, where };
       window.rtdb = { ref, set, push, onValue };
+      console.log("Firebase inicializado com sucesso!");
     </script>
 </head>
 <body>
@@ -66,6 +67,6 @@
             <button id="btn-jump">↑</button>
         </div>
     </div>
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
 </body>
 </html>

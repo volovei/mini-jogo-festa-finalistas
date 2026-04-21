@@ -25,6 +25,7 @@ const loginError = document.getElementById("login-error");
 let currentUserHandle = null;
 
 async function handleSignup() {
+    console.log("Tentando criar conta...");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -39,6 +40,7 @@ async function handleSignup() {
     }
 
     try {
+        if (!window.firestore) throw new Error("Firebase Firestore não carregou!");
         const { collection, addDoc, getDocs, query, where } = window.firestore;
         const db = window.firebaseDB;
         
@@ -59,15 +61,17 @@ async function handleSignup() {
             createdAt: new Date()
         });
 
+        console.log("Conta criada no Firestore!");
         loginError.style.color = "#4CAF50";
         loginError.innerText = "Conta criada! Já podes entrar.";
     } catch (e) {
         console.error("Erro no signup: ", e);
-        loginError.innerText = "Erro ao criar conta. Verifica a consola.";
+        loginError.innerText = "Erro: " + e.message;
     }
 }
 
 async function handleLogin() {
+    console.log("Tentando fazer login...");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -77,6 +81,7 @@ async function handleLogin() {
     }
 
     try {
+        if (!window.firestore) throw new Error("Firebase Firestore não carregou!");
         const { collection, getDocs, query, where } = window.firestore;
         const db = window.firebaseDB;
         
@@ -94,12 +99,13 @@ async function handleLogin() {
         isLoggedIn = true;
         currentUserHandle = instaHandle;
         loginOverlay.style.display = "none";
+        console.log("Login efetuado com sucesso para:", currentUserHandle);
         
         // Sincronizar HighScore do RTDB se existir
         syncHighScoreFromRTDB();
     } catch (e) {
         console.error("Erro no login: ", e);
-        loginError.innerText = "Erro no login. Configura o Firebase!";
+        loginError.innerText = "Erro: " + e.message;
     }
 }
 
