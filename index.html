@@ -9,25 +9,25 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-      // Firebase configuration - USER NEEDS TO COMPLETE THIS
+      // Firebase configuration
       const firebaseConfig = {
         projectId: "festafinalistajogolobo",
-        // Adicione o resto das suas credenciais do Firebase aqui para funcionar:
-        // apiKey: "...",
-        // authDomain: "...",
-        // storageBucket: "...",
-        // messagingSenderId: "...",
-        // appId: "..."
+        databaseURL: "https://festafinalistajogolobo-default-rtdb.europe-west1.firebasedatabase.app/",
+        // Note: Rest of config (apiKey, etc) needs to be added by user or provided
       };
 
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      const rtdb = getDatabase(app);
 
       // Expose to window for game.js
       window.firebaseDB = db;
+      window.firebaseRTDB = rtdb;
       window.firestore = { collection, addDoc, getDocs, query, where };
+      window.rtdb = { ref, set, push, onValue };
     </script>
 </head>
 <body>
@@ -50,8 +50,11 @@
         <canvas id="game"></canvas>
     </div>
     <div id="mobile-controls">
-        <button id="btn-left">←</button>
-        <div class="controls-right">
+        <div class="controls-left-group">
+            <button id="btn-left">←</button>
+            <button id="btn-right">→</button>
+        </div>
+        <div class="controls-right-group">
             <button id="btn-down">↓</button>
             <button id="btn-jump">↑</button>
         </div>

@@ -22,6 +22,8 @@ const btnSignup = document.getElementById("btn-signup");
 const loginError = document.getElementById("login-error");
 
 // Lógica de Autenticação Firebase
+let currentUserHandle = null;
+
 async function handleSignup() {
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
@@ -50,7 +52,7 @@ async function handleSignup() {
             return;
         }
 
-        // Criar conta
+        // Criar conta no Firestore (para perfil/auth)
         await addDoc(usersRef, {
             handle: instaHandle,
             password: password,
@@ -90,10 +92,47 @@ async function handleLogin() {
 
         // Login sucesso
         isLoggedIn = true;
+        currentUserHandle = instaHandle;
         loginOverlay.style.display = "none";
+        
+        // Sincronizar HighScore do RTDB se existir
+        syncHighScoreFromRTDB();
     } catch (e) {
         console.error("Erro no login: ", e);
         loginError.innerText = "Erro no login. Configura o Firebase!";
+    }
+}
+
+async function syncHighScoreFromRTDB() {
+    if (!currentUserHandle) return;
+    const { ref, onValue } = window.rtdb;
+    const db = window.firebaseRTDB;
+    const scoreRef = ref(db, 'scores/' + currentUserHandle.replace('@', ''));
+    
+    onValue(scoreRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.highScore > highScore) {
+            highScore = data.highScore;
+            localStorage.setItem("highScore", String(highScore));
+        }
+    });
+}
+
+async function saveScoreToRTDB(newScore) {
+    if (!currentUserHandle || !isLoggedIn) return;
+    try {
+        const { ref, set } = window.rtdb;
+        const db = window.firebaseRTDB;
+        const scoreRef = ref(db, 'scores/' + currentUserHandle.replace('@', ''));
+        
+        await set(scoreRef, {
+            handle: currentUserHandle,
+            highScore: Math.floor(newScore),
+            updatedAt: new Date().toISOString()
+        });
+        console.log("Score guardado no RTDB!");
+    } catch (e) {
+        console.warn("Erro ao guardar no RTDB: ", e);
     }
 }
 
@@ -649,6 +688,9 @@ function saveHighScore() {
         highScore = currentScore;
         newHighScoreAchieved = true;
         localStorage.setItem("highScore", String(highScore));
+        
+        // Guardar no Firebase RTDB
+        saveScoreToRTDB(currentScore);
     }
 }
 
@@ -737,6 +779,9 @@ function setDuckInput(active) {
 
 // Eventos (Teclado e Mobile)
 window.addEventListener('keydown', (e) => {
+    // Se o login estiver visível, não bloqueamos teclas para permitir escrita
+    if (!isLoggedIn) return;
+
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault(); // Evita scroll da página
         handleInput();
@@ -762,6 +807,7 @@ canvas.addEventListener('mousedown', (e) => {
 
 // Eventos para terminar o salto (quando se solta a tecla/dedo)
 window.addEventListener('keyup', (e) => {
+    if (!isLoggedIn) return;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         handleJumpEnd();
     } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
@@ -1119,6 +1165,7 @@ resizeCanvas();
 
 // Mobile button controls
 const btnLeft = document.getElementById('btn-left');
+const btnRight = document.getElementById('btn-right');
 const btnDown = document.getElementById('btn-down');
 const btnJump = document.getElementById('btn-jump');
 
@@ -1130,6 +1177,13 @@ if (btnLeft) {
     btnLeft.addEventListener('touchend', (e) => {
         e.preventDefault();
         leftInputActive = false;
+    }, { passive: false });
+}
+
+if (btnRight) {
+    btnRight.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        // Placeholder for future right movement if needed
     }, { passive: false });
 }
 
