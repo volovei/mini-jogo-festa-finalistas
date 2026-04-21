@@ -5,8 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chrome Dino Game Clone</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDKs -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+      // Firebase configuration - USER NEEDS TO COMPLETE THIS
+      const firebaseConfig = {
+        projectId: "festafinalistajogolobo",
+        // Adicione o resto das suas credenciais do Firebase aqui para funcionar:
+        // apiKey: "...",
+        // authDomain: "...",
+        // storageBucket: "...",
+        // messagingSenderId: "...",
+        // appId: "..."
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // Expose to window for game.js
+      window.firebaseDB = db;
+      window.firestore = { collection, addDoc, getDocs, query, where };
+    </script>
 </head>
 <body>
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2>Festa Finalista - Login</h2>
+            <div id="login-form">
+                <input type="text" id="insta-handle" placeholder="@ do instagram" required>
+                <input type="password" id="login-pass" placeholder="Password" required>
+                <div class="button-group">
+                    <button id="btn-login">Entrar</button>
+                    <button id="btn-signup">Criar Conta</button>
+                </div>
+                <p id="login-error"></p>
+            </div>
+        </div>
+    </div>
     <div id="night-background"></div>
     <div id="game-container">
         <canvas id="game"></canvas>

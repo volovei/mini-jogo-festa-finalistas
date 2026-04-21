@@ -11,6 +11,94 @@ canvas.height = baseHeight;
 
 // Estados do Jogo: 'START', 'PLAYING', 'GAMEOVER'
 let gameState = 'START';
+let isLoggedIn = false;
+
+// Elementos de Autenticação
+const loginOverlay = document.getElementById("login-overlay");
+const instaHandleInput = document.getElementById("insta-handle");
+const loginPassInput = document.getElementById("login-pass");
+const btnLogin = document.getElementById("btn-login");
+const btnSignup = document.getElementById("btn-signup");
+const loginError = document.getElementById("login-error");
+
+// Lógica de Autenticação Firebase
+async function handleSignup() {
+    const instaHandle = instaHandleInput.value.trim();
+    const password = loginPassInput.value.trim();
+
+    if (!instaHandle || !password) {
+        loginError.innerText = "Preencha todos os campos!";
+        return;
+    }
+
+    if (!instaHandle.startsWith("@")) {
+        loginError.innerText = "O handle deve começar com @";
+        return;
+    }
+
+    try {
+        const { collection, addDoc, getDocs, query, where } = window.firestore;
+        const db = window.firebaseDB;
+        
+        // Verificar se já existe
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("handle", "==", instaHandle));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            loginError.innerText = "Este @ já está registado!";
+            return;
+        }
+
+        // Criar conta
+        await addDoc(usersRef, {
+            handle: instaHandle,
+            password: password,
+            createdAt: new Date()
+        });
+
+        loginError.style.color = "#4CAF50";
+        loginError.innerText = "Conta criada! Já podes entrar.";
+    } catch (e) {
+        console.error("Erro no signup: ", e);
+        loginError.innerText = "Erro ao criar conta. Verifica a consola.";
+    }
+}
+
+async function handleLogin() {
+    const instaHandle = instaHandleInput.value.trim();
+    const password = loginPassInput.value.trim();
+
+    if (!instaHandle || !password) {
+        loginError.innerText = "Preencha todos os campos!";
+        return;
+    }
+
+    try {
+        const { collection, getDocs, query, where } = window.firestore;
+        const db = window.firebaseDB;
+        
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("handle", "==", instaHandle), where("password", "==", password));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            loginError.style.color = "#ff4d4d";
+            loginError.innerText = "@ ou password incorretos!";
+            return;
+        }
+
+        // Login sucesso
+        isLoggedIn = true;
+        loginOverlay.style.display = "none";
+    } catch (e) {
+        console.error("Erro no login: ", e);
+        loginError.innerText = "Erro no login. Configura o Firebase!";
+    }
+}
+
+if (btnLogin) btnLogin.addEventListener("click", handleLogin);
+if (btnSignup) btnSignup.addEventListener("click", handleSignup);
 
 // Carregamento dos sprites do player
 function createSprite(src) {
@@ -621,6 +709,7 @@ function resetGame() {
 }
 
 function handleInput() {
+    if (!isLoggedIn) return;
     if (gameState === 'START' || gameState === 'GAMEOVER' || easterEggActive) {
         resetGame();
     } else if (gameState === 'PLAYING') {
@@ -635,6 +724,7 @@ function handleJumpEnd() {
 }
 
 function setDuckInput(active) {
+    if (!isLoggedIn) return;
     duckInputActive = active;
 
     if (gameState !== 'PLAYING' || player.jumping) {
@@ -655,7 +745,7 @@ window.addEventListener('keydown', (e) => {
         setDuckInput(true);
     } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
-        leftInputActive = true;
+        if (isLoggedIn) leftInputActive = true;
     }
 });
 
@@ -695,6 +785,8 @@ canvas.addEventListener('mouseup', (e) => {
  */
 
 function update() {
+    if (!isLoggedIn) return;
+
     if (gameState === 'GAMEOVER') {
         gameoverAnimationFrame++;
         return;

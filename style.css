@@ -96,3 +96,76 @@ canvas {
         display: none;
     }
 }
+
+#login-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#login-box {
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    width: 320px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid #444;
+}
+
+#login-box h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#login-form input {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    background: #333;
+    color: white;
+    font-size: 16px;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+#login-form button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #ff4d4d;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#login-form button#btn-signup {
+    background: #444;
+}
+
+#login-form button:hover {
+    filter: brightness(1.1);
+}
+
+#login-error {
+    color: #ff4d4d;
+    font-size: 14px;
+    margin-top: 10px;
+}
