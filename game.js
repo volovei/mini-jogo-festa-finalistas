@@ -164,11 +164,21 @@ floorImage.src = "imagens reais/chao_disco.png";
 const gameoverImage = new Image();
 gameoverImage.src = "imagens reais/dancinha_do_jamal_lobo.png";
 
+// Carregamento da imagem do Easter egg - Artista revelado
+const easterEggImage = new Image();
+easterEggImage.src = "artistas/espama.jpg";
+
 // Variáveis Globais
 let score = 0;
 let highScore = Number(localStorage.getItem("highScore") || 0);
 let gameoverAnimationFrame = 0;
 let gameSpeed = 2.8;
+
+// Easter egg variables
+let easterEggActive = false;
+let easterEggTimer = 0;
+let easterEggAnimationFrame = 0;
+let leftInputActive = false;
 const initialSpeed = 5;
 const speedIncrease = 0.00005;
 const riseGravity = 0.34;
@@ -591,12 +601,17 @@ function resetGame() {
     lastPatternId = "singleSmall";
     newHighScoreAchieved = false;
     obstacles.length = 0;
+    player.x = 50;
     player.y = groundY;
     player.vy = 0;
     player.jumping = false;
     player.ducking = false;
     player.jumpAnimationFrame = 0;
     gameoverAnimationFrame = 0;
+    easterEggActive = false;
+    easterEggTimer = 0;
+    easterEggAnimationFrame = 0;
+    leftInputActive = false;
     nightBackground.style.backgroundImage = defaultBackgroundImage;
     nightBackground.classList.remove('active');
     setActivePlayerAnimation("run", { restart: true });
@@ -636,6 +651,9 @@ window.addEventListener('keydown', (e) => {
     } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault();
         setDuckInput(true);
+    } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        e.preventDefault();
+        leftInputActive = true;
     }
 });
 
@@ -656,6 +674,8 @@ window.addEventListener('keyup', (e) => {
         handleJumpEnd();
     } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         setDuckInput(false);
+    } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        leftInputActive = false;
     }
 });
 
@@ -678,6 +698,17 @@ function update() {
         return;
     }
     
+    if (easterEggActive) {
+        easterEggTimer++;
+        easterEggAnimationFrame++;
+        if (easterEggTimer > 300) { 
+            easterEggActive = false;
+            easterEggTimer = 0;
+            resetGame();
+        }
+        return;
+    }
+
     if (gameState !== 'PLAYING') return;
 
     frameCount++;
@@ -686,6 +717,16 @@ function update() {
     distanceTraveled += gameSpeed;
     floorOffset += gameSpeed;
     score += gameSpeed * 0.08; // Pontuação baseada na distância
+
+    // Easter egg logic: move player to the left
+    if (Math.floor(score) < 200 && leftInputActive && gameState === 'PLAYING') {
+        player.x -= 4;
+        if (player.x < -100) {
+            easterEggActive = true;
+            easterEggTimer = 0;
+            easterEggAnimationFrame = 0;
+        }
+    }
 
     handleBackgroundTransition();
 
@@ -706,32 +747,34 @@ function update() {
             : gameSpeed;
         obs.x -= speed;
 
-        // Deteção de Colisão (AABB)
-        const hitbox = player.getHitbox();
-        
-        // Usar hitbox customizada se existir, senão usar dimensões do obstáculo
-        const obsHitbox = obstacleTypes[obs.type].collisionWidth 
-            ? {
-                x: obs.x + obstacleTypes[obs.type].collisionOffsetX,
-                y: obs.y + obstacleTypes[obs.type].collisionOffsetY,
-                width: obstacleTypes[obs.type].collisionWidth,
-                height: obstacleTypes[obs.type].collisionHeight
+        // Deteção de Colisão (AABB) - not active when moving left for easter egg
+        if (!leftInputActive || Math.floor(score) >= 200) {
+            const hitbox = player.getHitbox();
+            
+            // Usar hitbox customizada se existir, senão usar dimensões do obstáculo
+            const obsHitbox = obstacleTypes[obs.type].collisionWidth 
+                ? {
+                    x: obs.x + obstacleTypes[obs.type].collisionOffsetX,
+                    y: obs.y + obstacleTypes[obs.type].collisionOffsetY,
+                    width: obstacleTypes[obs.type].collisionWidth,
+                    height: obstacleTypes[obs.type].collisionHeight
+                }
+                : {
+                    x: obs.x,
+                    y: obs.y,
+                    width: obs.width,
+                    height: obs.height
+                };
+            
+            if (
+                hitbox.x < obsHitbox.x + obsHitbox.width &&
+                hitbox.x + hitbox.width > obsHitbox.x &&
+                hitbox.y < obsHitbox.y + obsHitbox.height &&
+                hitbox.y + hitbox.height > obsHitbox.y
+            ) {
+                gameState = 'GAMEOVER';
+                saveHighScore();
             }
-            : {
-                x: obs.x,
-                y: obs.y,
-                width: obs.width,
-                height: obs.height
-            };
-        
-        if (
-            hitbox.x < obsHitbox.x + obsHitbox.width &&
-            hitbox.x + hitbox.width > obsHitbox.x &&
-            hitbox.y < obsHitbox.y + obsHitbox.height &&
-            hitbox.y + hitbox.height > obsHitbox.y
-        ) {
-            gameState = 'GAMEOVER';
-            saveHighScore();
         }
 
         // Remover obstáculos que saíram do ecrã
@@ -744,6 +787,12 @@ function update() {
 function draw() {
     // Limpar Canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Easter egg overlay - draw this first if active
+    if (easterEggActive) {
+        drawEasterEgg();
+        return;
+    }
 
     // Desenhar Chão
     if (floorImage.complete && floorImage.naturalWidth > 0) {
@@ -788,6 +837,84 @@ function draw() {
         drawOverlay("PRESS SPACE OR TAP TO START");
     } else if (gameState === 'GAMEOVER') {
         drawOverlay("GAME OVER - PRESS TO RESTART");
+    }
+}
+
+function drawEasterEgg() {
+    // Dynamic background
+    const bgAlpha = 0.7 + Math.sin(easterEggAnimationFrame * 0.05) * 0.3;
+    ctx.fillStyle = `rgba(0, 0, 0, ${bgAlpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the artist image with dynamic scaling and movement
+    if (easterEggImage.complete && easterEggImage.naturalWidth > 0) {
+        const scale = 0.5 + Math.sin(easterEggAnimationFrame * 0.08) * 0.1;
+        const maxWidth = 350;
+        const maxHeight = 350;
+        let drawWidth = Math.min(easterEggImage.naturalWidth, maxWidth);
+        let drawHeight = (drawWidth / easterEggImage.naturalWidth) * easterEggImage.naturalHeight;
+        
+        if (drawHeight > maxHeight) {
+            const ratio = maxHeight / drawHeight;
+            drawHeight = maxHeight;
+            drawWidth = drawWidth * ratio;
+        }
+
+        drawWidth *= scale;
+        drawHeight *= scale;
+
+        // Dynamic position with slight movement
+        const offsetX = Math.sin(easterEggAnimationFrame * 0.06) * 20;
+        const offsetY = Math.cos(easterEggAnimationFrame * 0.06) * 15;
+        
+        const x = (canvas.width - drawWidth) / 2 + offsetX;
+        const y = 30 + offsetY;
+
+        // Glow effect behind image
+        ctx.shadowBlur = 30 + Math.sin(easterEggAnimationFrame * 0.1) * 15;
+        ctx.shadowColor = "rgba(255, 215, 0, 0.8)";
+        
+        ctx.drawImage(easterEggImage, x, y, drawWidth, drawHeight);
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+
+        // Text with dynamic effects
+        const textY = y + drawHeight + 40;
+        const textScale = 1 + Math.sin(easterEggAnimationFrame * 0.1) * 0.1;
+        
+        ctx.save();
+        ctx.translate(canvas.width / 2, textY);
+        ctx.scale(textScale, textScale);
+        
+        // Rainbow text
+        const hue = (easterEggAnimationFrame * 2) % 360;
+        ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+        ctx.font = "bold 42px Courier New";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Text shadow for better readability
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        
+        ctx.fillText("Artista revelado!!!", 0, 0);
+        
+        ctx.restore();
+
+        // Sparkles around
+        for (let i = 0; i < 8; i++) {
+            const angle = (easterEggAnimationFrame * 0.03 + i * Math.PI / 4);
+            const radius = 150 + Math.sin(easterEggAnimationFrame * 0.05 + i) * 30;
+            const sparkX = canvas.width / 2 + Math.cos(angle) * radius;
+            const sparkY = (canvas.height / 2) - 50 + Math.sin(angle) * radius;
+            const sparkSize = 4 + Math.sin(easterEggAnimationFrame * 0.1 + i * 0.5) * 2;
+            
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${(easterEggAnimationFrame + i * 45) % 360}, 100%, 70%)`;
+            ctx.fill();
+        }
     }
 }
 
