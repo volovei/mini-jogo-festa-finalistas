@@ -619,7 +619,7 @@ function resetGame() {
 }
 
 function handleInput() {
-    if (gameState === 'START' || gameState === 'GAMEOVER') {
+    if (gameState === 'START' || gameState === 'GAMEOVER' || easterEggActive) {
         resetGame();
     } else if (gameState === 'PLAYING') {
         player.jump();
@@ -699,13 +699,7 @@ function update() {
     }
     
     if (easterEggActive) {
-        easterEggTimer++;
         easterEggAnimationFrame++;
-        if (easterEggTimer > 300) { 
-            easterEggActive = false;
-            easterEggTimer = 0;
-            resetGame();
-        }
         return;
     }
 
