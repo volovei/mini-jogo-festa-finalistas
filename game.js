@@ -25,7 +25,7 @@ const loginError = document.getElementById("login-error");
 let currentUserHandle = null;
 
 async function handleSignup() {
-    console.log("Tentando criar conta...");
+    console.log("Tentando criar conta no RTDB...");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -40,28 +40,28 @@ async function handleSignup() {
     }
 
     try {
-        if (!window.firestore) throw new Error("Firebase Firestore não carregou!");
-        const { collection, addDoc, getDocs, query, where } = window.firestore;
-        const db = window.firebaseDB;
+        if (!window.rtdb) throw new Error("Firebase Realtime Database não carregou!");
+        const { ref, set, get, child } = window.rtdb;
+        const db = window.firebaseRTDB;
         
-        // Verificar se já existe
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("handle", "==", instaHandle));
-        const querySnapshot = await getDocs(q);
+        const cleanHandle = instaHandle.toLowerCase().replace('@', '').replace(/[^a-z0-9]/g, '_');
+        const userRef = ref(db, 'users/' + cleanHandle);
 
-        if (!querySnapshot.empty) {
+        // Verificar se já existe
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
             loginError.innerText = "Este @ já está registado!";
             return;
         }
 
-        // Criar conta no Firestore (para perfil/auth)
-        await addDoc(usersRef, {
+        // Criar conta no RTDB
+        await set(userRef, {
             handle: instaHandle,
             password: password,
-            createdAt: new Date()
+            createdAt: new Date().toISOString()
         });
 
-        console.log("Conta criada no Firestore!");
+        console.log("Conta criada no RTDB!");
         loginError.style.color = "#4CAF50";
         loginError.innerText = "Conta criada! Já podes entrar.";
     } catch (e) {
@@ -71,7 +71,7 @@ async function handleSignup() {
 }
 
 async function handleLogin() {
-    console.log("Tentando fazer login...");
+    console.log("Tentando fazer login via RTDB...");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -81,15 +81,16 @@ async function handleLogin() {
     }
 
     try {
-        if (!window.firestore) throw new Error("Firebase Firestore não carregou!");
-        const { collection, getDocs, query, where } = window.firestore;
-        const db = window.firebaseDB;
+        if (!window.rtdb) throw new Error("Firebase Realtime Database não carregou!");
+        const { ref, get } = window.rtdb;
+        const db = window.firebaseRTDB;
         
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("handle", "==", instaHandle), where("password", "==", password));
-        const querySnapshot = await getDocs(q);
+        const cleanHandle = instaHandle.toLowerCase().replace('@', '').replace(/[^a-z0-9]/g, '_');
+        const userRef = ref(db, 'users/' + cleanHandle);
+        
+        const snapshot = await get(userRef);
 
-        if (querySnapshot.empty) {
+        if (!snapshot.exists() || snapshot.val().password !== password) {
             loginError.style.color = "#ff4d4d";
             loginError.innerText = "@ ou password incorretos!";
             return;
@@ -111,10 +112,22 @@ async function handleLogin() {
 
 async function syncHighScoreFromRTDB() {
     if (!currentUserHandle) return;
-    const { ref, onValue } = window.rtdb;
+    const { ref, get, onValue } = window.rtdb;
     const db = window.firebaseRTDB;
-    const scoreRef = ref(db, 'scores/' + currentUserHandle.replace('@', ''));
+    const cleanHandle = currentUserHandle.toLowerCase().replace('@', '').replace(/[^a-z0-9]/g, '_');
+    const scoreRef = ref(db, 'scores/' + cleanHandle);
     
+    // Get initial value
+    const snapshot = await get(scoreRef);
+    if (snapshot.exists()) {
+        const data = snapshot.val();
+        if (data && data.highScore > highScore) {
+            highScore = data.highScore;
+            localStorage.setItem("highScore", String(highScore));
+        }
+    }
+    
+    // Listen for updates
     onValue(scoreRef, (snapshot) => {
         const data = snapshot.val();
         if (data && data.highScore > highScore) {
