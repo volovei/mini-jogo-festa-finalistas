@@ -125,20 +125,26 @@ async function syncHighScoreFromRTDB() {
 }
 
 async function saveScoreToRTDB(newScore) {
-    if (!currentUserHandle || !isLoggedIn) return;
+    if (!currentUserHandle || !isLoggedIn) {
+        console.warn("Não foi possível guardar no RTDB: User não logado!");
+        return;
+    }
     try {
         const { ref, set } = window.rtdb;
         const db = window.firebaseRTDB;
-        const scoreRef = ref(db, 'scores/' + currentUserHandle.replace('@', ''));
+        const cleanHandle = currentUserHandle.replace('@', '').replace('.', '_'); // Evita caracteres inválidos no RTDB
+        const scoreRef = ref(db, 'scores/' + cleanHandle);
+        
+        console.log("A tentar guardar score para:", cleanHandle, "Valor:", Math.floor(newScore));
         
         await set(scoreRef, {
             handle: currentUserHandle,
             highScore: Math.floor(newScore),
             updatedAt: new Date().toISOString()
         });
-        console.log("Score guardado no RTDB!");
+        console.log("Score guardado com SUCESSO no RTDB!");
     } catch (e) {
-        console.warn("Erro ao guardar no RTDB: ", e);
+        console.error("ERRO ao guardar no RTDB: ", e);
     }
 }
 
@@ -690,13 +696,14 @@ function spawnPattern() {
 
 function saveHighScore() {
     const currentScore = Math.floor(score);
+    
+    // Guardar no Firebase RTDB sempre que termina para testar ligação
+    saveScoreToRTDB(currentScore);
+
     if (currentScore > highScore) {
         highScore = currentScore;
         newHighScoreAchieved = true;
         localStorage.setItem("highScore", String(highScore));
-        
-        // Guardar no Firebase RTDB
-        saveScoreToRTDB(currentScore);
     }
 }
 
