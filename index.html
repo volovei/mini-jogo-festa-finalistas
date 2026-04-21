@@ -27,7 +27,7 @@
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
-      const rtdb = getDatabase(app);
+      const rtdb = getDatabase(app, firebaseConfig.databaseURL); // Ligação explícita à URL
       const analytics = getAnalytics(app);
 
       // Expose to window for game.js
@@ -35,6 +35,14 @@
       window.firebaseRTDB = rtdb;
       window.firestore = { collection, addDoc, getDocs, query, where };
       window.rtdb = { ref, set, push, onValue };
+
+      // Teste de escrita imediato para validar ligação
+      set(ref(rtdb, 'connection_test'), {
+        status: "online",
+        lastAttempt: new Date().toISOString()
+      }).then(() => console.log("Teste de escrita RTDB: SUCESSO!"))
+        .catch(e => console.error("Teste de escrita RTDB: FALHOU", e));
+
       console.log("Firebase inicializado com sucesso!");
     </script>
 </head>

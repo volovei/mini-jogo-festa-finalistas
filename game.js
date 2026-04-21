@@ -132,17 +132,22 @@ async function saveScoreToRTDB(newScore) {
     try {
         const { ref, set } = window.rtdb;
         const db = window.firebaseRTDB;
-        const cleanHandle = currentUserHandle.replace('@', '').replace('.', '_'); // Evita caracteres inválidos no RTDB
+        
+        // Limpeza rigorosa para o Firebase (só letras e números)
+        const cleanHandle = currentUserHandle.toLowerCase()
+            .replace('@', '')
+            .replace(/[^a-z0-9]/g, '_'); 
+            
         const scoreRef = ref(db, 'scores/' + cleanHandle);
         
-        console.log("A tentar guardar score para:", cleanHandle, "Valor:", Math.floor(newScore));
+        console.log("A enviar score para:", 'scores/' + cleanHandle, "Valor:", Math.floor(newScore));
         
         await set(scoreRef, {
             handle: currentUserHandle,
             highScore: Math.floor(newScore),
             updatedAt: new Date().toISOString()
         });
-        console.log("Score guardado com SUCESSO no RTDB!");
+        console.log("Score guardado com SUCESSO!");
     } catch (e) {
         console.error("ERRO ao guardar no RTDB: ", e);
     }
