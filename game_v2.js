@@ -24,8 +24,29 @@ const loginError = document.getElementById("login-error");
 // Lógica de Autenticação Firebase
 let currentUserHandle = null;
 
+async function hashPassword(password) {
+    console.log("A encriptar password...");
+    try {
+        if (!window.crypto || !window.crypto.subtle) {
+            console.warn("Crypto API não disponível. Usando fallback.");
+            const hash = "v1_" + btoa(password).split('').reverse().join('');
+            console.log("Hash (fallback):", hash);
+            return hash;
+        }
+        const msgUint8 = new TextEncoder().encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        console.log("Hash (SHA-256):", hash);
+        return hash;
+    } catch (e) {
+        console.error("Erro ao gerar hash:", e);
+        return password;
+    }
+}
+
 async function handleSignup() {
-    console.log("Tentando criar conta no RTDB...");
+    console.log("Versão 2.1 - Iniciando Signup");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -55,13 +76,17 @@ async function handleSignup() {
         }
 
         // Criar conta no RTDB
+        const hashedPassword = await hashPassword(password);
+        console.log("Hashing concluído. Enviando para Firebase...");
+        
         await set(userRef, {
             handle: instaHandle,
-            password: password,
+            password: hashedPassword,
             createdAt: new Date().toISOString()
         });
 
-        console.log("Conta criada no RTDB!");
+        alert("CONTA CRIADA COM SUCESSO! A password foi encriptada.");
+        console.log("Conta criada no RTDB com hash!");
         loginError.style.color = "#4CAF50";
         loginError.innerText = "Conta criada! Já podes entrar.";
     } catch (e) {
@@ -89,10 +114,21 @@ async function handleLogin() {
         const userRef = ref(db, 'users/' + cleanHandle);
         
         const snapshot = await get(userRef);
+        const hashedPassword = await hashPassword(password);
+        console.log("Login - Hash gerado:", hashedPassword);
 
-        if (!snapshot.exists() || snapshot.val().password !== password) {
+        if (!snapshot.exists()) {
             loginError.style.color = "#ff4d4d";
-            loginError.innerText = "@ ou password incorretos!";
+            loginError.innerText = "Utilizador não encontrado!";
+            return;
+        }
+
+        const storedPassword = snapshot.val().password;
+        console.log("Login - Hash guardado:", storedPassword);
+
+        if (storedPassword !== hashedPassword) {
+            loginError.style.color = "#ff4d4d";
+            loginError.innerText = "Password incorreta!";
             return;
         }
 
