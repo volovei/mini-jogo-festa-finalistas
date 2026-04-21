@@ -708,14 +708,19 @@ function update() {
     if (gameState !== 'PLAYING') return;
 
     frameCount++;
-    // Aumenta velocidade gradualmente
-    gameSpeed += speedIncrease;
-    distanceTraveled += gameSpeed;
-    floorOffset += gameSpeed;
-    score += gameSpeed * 0.08; // Pontuação baseada na distância
+    
+    const isMovingLeftForEasterEgg = Math.floor(score) < 200 && leftInputActive && gameState === 'PLAYING';
+
+    if (!isMovingLeftForEasterEgg) {
+        // Aumenta velocidade gradualmente
+        gameSpeed += speedIncrease;
+        distanceTraveled += gameSpeed;
+        floorOffset += gameSpeed;
+        score += gameSpeed * 0.08; // Pontuação baseada na distância
+    }
 
     // Easter egg logic: move player to the left
-    if (Math.floor(score) < 200 && leftInputActive && gameState === 'PLAYING') {
+    if (isMovingLeftForEasterEgg) {
         player.x -= 4;
         if (player.x < -100) {
             easterEggActive = true;
@@ -737,14 +742,16 @@ function update() {
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
         
-        // A botija move-se mais devagar
-        const speed = obs.type === 'bottle' 
-            ? gameSpeed * obstacleTypes.bottle.speedModifier 
-            : gameSpeed;
-        obs.x -= speed;
+        if (!isMovingLeftForEasterEgg) {
+            // A botija move-se mais devagar
+            const speed = obs.type === 'bottle' 
+                ? gameSpeed * obstacleTypes.bottle.speedModifier 
+                : gameSpeed;
+            obs.x -= speed;
+        }
 
         // Deteção de Colisão (AABB) - not active when moving left for easter egg
-        if (!leftInputActive || Math.floor(score) >= 200) {
+        if (!isMovingLeftForEasterEgg) {
             const hitbox = player.getHitbox();
             
             // Usar hitbox customizada se existir, senão usar dimensões do obstáculo
