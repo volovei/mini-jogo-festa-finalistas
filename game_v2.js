@@ -24,29 +24,35 @@ const loginError = document.getElementById("login-error");
 // Lógica de Autenticação Firebase
 let currentUserHandle = null;
 
-async function hashPassword(password) {
-    console.log("A encriptar password...");
+// Chave secreta para encriptação reversível
+const SECRET_KEY = "festa2026_secret_key";
+
+function encryptPassword(password) {
+    console.log("A encriptar para o Firebase...");
+    let result = "";
+    for (let i = 0; i < password.length; i++) {
+        result += String.fromCharCode(password.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
+    }
+    return btoa(result); // Converte para Base64 para ser guardado como string no Firebase
+}
+
+function decryptPassword(encryptedPassword) {
+    console.log("A desencriptar do Firebase...");
     try {
-        if (!window.crypto || !window.crypto.subtle) {
-            console.warn("Crypto API não disponível. Usando fallback.");
-            const hash = "v1_" + btoa(password).split('').reverse().join('');
-            console.log("Hash (fallback):", hash);
-            return hash;
+        const decoded = atob(encryptedPassword);
+        let result = "";
+        for (let i = 0; i < decoded.length; i++) {
+            result += String.fromCharCode(decoded.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
         }
-        const msgUint8 = new TextEncoder().encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        console.log("Hash (SHA-256):", hash);
-        return hash;
+        return result;
     } catch (e) {
-        console.error("Erro ao gerar hash:", e);
-        return password;
+        console.error("Erro ao desencriptar:", e);
+        return null;
     }
 }
 
 async function handleSignup() {
-    console.log("Versão 2.1 - Iniciando Signup");
+    console.log("--- NOVO PROCESSO DE SIGNUP ---");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -55,48 +61,42 @@ async function handleSignup() {
         return;
     }
 
-    if (!instaHandle.startsWith("@")) {
-        loginError.innerText = "O handle deve começar com @";
-        return;
-    }
-
     try {
-        if (!window.rtdb) throw new Error("Firebase Realtime Database não carregou!");
-        const { ref, set, get, child } = window.rtdb;
+        if (!window.rtdb) throw new Error("Firebase não carregou!");
+        const { ref, set, get } = window.rtdb;
         const db = window.firebaseRTDB;
         
         const cleanHandle = instaHandle.toLowerCase().replace('@', '').replace(/[^a-z0-9]/g, '_');
         const userRef = ref(db, 'users/' + cleanHandle);
 
-        // Verificar se já existe
         const snapshot = await get(userRef);
         if (snapshot.exists()) {
-            loginError.innerText = "Este @ já está registado!";
+            loginError.innerText = "Este @ já existe!";
             return;
         }
 
-        // Criar conta no RTDB
-        const hashedPassword = await hashPassword(password);
-        console.log("Hashing concluído. Enviando para Firebase...");
-        
+        // ENCRIPTAR ANTES DE ENVIAR
+        const encrypted = encryptPassword(password);
+        console.log("Password original:", password);
+        console.log("Password encriptada (Firebase):", encrypted);
+
         await set(userRef, {
             handle: instaHandle,
-            password: hashedPassword,
+            password: encrypted,
             createdAt: new Date().toISOString()
         });
 
-        alert("CONTA CRIADA COM SUCESSO! A password foi encriptada.");
-        console.log("Conta criada no RTDB com hash!");
+        alert("SUCESSO! Conta criada. A password foi encriptada no Firebase.");
         loginError.style.color = "#4CAF50";
         loginError.innerText = "Conta criada! Já podes entrar.";
     } catch (e) {
-        console.error("Erro no signup: ", e);
+        console.error("Erro no signup:", e);
         loginError.innerText = "Erro: " + e.message;
     }
 }
 
 async function handleLogin() {
-    console.log("Tentando fazer login via RTDB...");
+    console.log("--- NOVO PROCESSO DE LOGIN ---");
     const instaHandle = instaHandleInput.value.trim();
     const password = loginPassInput.value.trim();
 
@@ -106,7 +106,7 @@ async function handleLogin() {
     }
 
     try {
-        if (!window.rtdb) throw new Error("Firebase Realtime Database não carregou!");
+        if (!window.rtdb) throw new Error("Firebase não carregou!");
         const { ref, get } = window.rtdb;
         const db = window.firebaseRTDB;
         
@@ -114,19 +114,21 @@ async function handleLogin() {
         const userRef = ref(db, 'users/' + cleanHandle);
         
         const snapshot = await get(userRef);
-        const hashedPassword = await hashPassword(password);
-        console.log("Login - Hash gerado:", hashedPassword);
 
         if (!snapshot.exists()) {
-            loginError.style.color = "#ff4d4d";
             loginError.innerText = "Utilizador não encontrado!";
             return;
         }
 
-        const storedPassword = snapshot.val().password;
-        console.log("Login - Hash guardado:", storedPassword);
+        // PEGAR NA PASS DO FIREBASE E DESENCRIPTAR
+        const encryptedFromDB = snapshot.val().password;
+        const decryptedPassword = decryptPassword(encryptedFromDB);
+        
+        console.log("Encriptada no DB:", encryptedFromDB);
+        console.log("Desencriptada:", decryptedPassword);
+        console.log("Introduzida:", password);
 
-        if (storedPassword !== hashedPassword) {
+        if (decryptedPassword !== password) {
             loginError.style.color = "#ff4d4d";
             loginError.innerText = "Password incorreta!";
             return;
@@ -136,12 +138,11 @@ async function handleLogin() {
         isLoggedIn = true;
         currentUserHandle = instaHandle;
         loginOverlay.style.display = "none";
-        console.log("Login efetuado com sucesso para:", currentUserHandle);
+        console.log("Login SUCESSO!");
         
-        // Sincronizar HighScore do RTDB se existir
         syncHighScoreFromRTDB();
     } catch (e) {
-        console.error("Erro no login: ", e);
+        console.error("Erro no login:", e);
         loginError.innerText = "Erro: " + e.message;
     }
 }
