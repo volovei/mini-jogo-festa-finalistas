@@ -9,7 +9,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import { getDatabase, ref, set, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+      import { getDatabase, ref, set, update, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
       // Firebase configuration
@@ -34,7 +34,7 @@
       window.firebaseDB = db;
       window.firebaseRTDB = rtdb;
       window.firestore = { collection, addDoc, getDocs, query, where };
-      window.rtdb = { ref, set, push, onValue, get, child };
+      window.rtdb = { ref, set, update, push, onValue, get, child };
 
       // Teste de escrita imediato para validar ligação
       set(ref(rtdb, 'connection_test'), {

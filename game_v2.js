@@ -5,7 +5,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const baseWidth = 1400;
-const baseHeight = 360;
+const baseHeight = 520;
 canvas.width = baseWidth;
 canvas.height = baseHeight;
 
@@ -83,6 +83,7 @@ async function handleSignup() {
         await set(userRef, {
             handle: instaHandle,
             password: encrypted,
+            highScore: 0,
             createdAt: new Date().toISOString()
         });
 
@@ -152,10 +153,10 @@ async function syncHighScoreFromRTDB() {
     const { ref, get, onValue } = window.rtdb;
     const db = window.firebaseRTDB;
     const cleanHandle = currentUserHandle.toLowerCase().replace('@', '').replace(/[^a-z0-9]/g, '_');
-    const scoreRef = ref(db, 'scores/' + cleanHandle);
+    const userRef = ref(db, 'users/' + cleanHandle);
     
     // Get initial value
-    const snapshot = await get(scoreRef);
+    const snapshot = await get(userRef);
     if (snapshot.exists()) {
         const data = snapshot.val();
         if (data && data.highScore > highScore) {
@@ -165,7 +166,7 @@ async function syncHighScoreFromRTDB() {
     }
     
     // Listen for updates
-    onValue(scoreRef, (snapshot) => {
+    onValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data && data.highScore > highScore) {
             highScore = data.highScore;
@@ -180,26 +181,24 @@ async function saveScoreToRTDB(newScore) {
         return;
     }
     try {
-        const { ref, set } = window.rtdb;
+        const { ref, update } = window.rtdb;
         const db = window.firebaseRTDB;
         
-        // Limpeza rigorosa para o Firebase (só letras e números)
         const cleanHandle = currentUserHandle.toLowerCase()
             .replace('@', '')
             .replace(/[^a-z0-9]/g, '_'); 
             
-        const scoreRef = ref(db, 'scores/' + cleanHandle);
+        const userRef = ref(db, 'users/' + cleanHandle);
         
-        console.log("A enviar score para:", 'scores/' + cleanHandle, "Valor:", Math.floor(newScore));
+        console.log("A atualizar score em 'users/':", cleanHandle, "Valor:", Math.floor(newScore));
         
-        await set(scoreRef, {
-            handle: currentUserHandle,
+        await update(userRef, {
             highScore: Math.floor(newScore),
             updatedAt: new Date().toISOString()
         });
-        console.log("Score guardado com SUCESSO!");
+        console.log("Score atualizado com SUCESSO!");
     } catch (e) {
-        console.error("ERRO ao guardar no RTDB: ", e);
+        console.error("ERRO ao atualizar score no RTDB: ", e);
     }
 }
 
@@ -375,12 +374,23 @@ let easterEggActive = false;
 let easterEggTimer = 0;
 let easterEggAnimationFrame = 0;
 let leftInputActive = false;
-const initialSpeed = 5;
+const initialSpeed = 5.4;
 const speedIncrease = 0.00005;
 const riseGravity = 0.34;
 const fallGravity = 0.78;
 const jumpForce = -12.8;
 const maxFallSpeed = 16;
+const maxJumpRise = (() => {
+    let vy = jumpForce;
+    let y = 0;
+    for (let i = 0; i < 240; i++) {
+        const gravity = vy < 0 ? riseGravity : fallGravity;
+        vy += gravity;
+        y += vy;
+        if (vy >= 0) break;
+    }
+    return Math.max(0, -y);
+})();
 const groundY = canvas.height - 74; // Mantém o player junto ao chão com mais espaço vertical
 const floorTopY = groundY + 42;
 const floorHeight = canvas.height - floorTopY;
@@ -391,6 +401,15 @@ let lastPatternId = "singleSmall";
 let newHighScoreAchieved = false;
 let floorOffset = 0;
 let duckInputActive = false;
+let missedEasterEggMessageTimer = 0;
+let missedEasterEggMessageText = "";
+let leftInputPrevActive = false;
+const missedEasterEggMessages = [
+    "Se fosse antes...",
+    "Agora já não dá...",
+    "Perdeste a chance!",
+    "Isso era antes dos 200..."
+];
 const defaultBackgroundImage = "url('imagens reais/noite_de_pato.jpg')";
 const specialBackgroundImage = "url('imagens reais/terraqueo.jpeg')";
 const specialBackgroundTriggerScore = 1000;
@@ -436,6 +455,16 @@ const obstacleTypes = {
         collisionHeight: 22,
         collisionOffsetX: 5,
         collisionOffsetY: 2
+    },
+    triple: {
+        width: 56,
+        height: 94,
+        yOffset: -26,
+        img: obstacle1,
+        collisionWidth: 48,
+        collisionHeight: 82,
+        collisionOffsetX: 4,
+        collisionOffsetY: 6
     }
 };
 
@@ -495,6 +524,15 @@ const patternLibrary = [
         weight: 1, // Reduzido para ser mais raro
         obstacles: [
             { type: "bottle", gap: 0 }
+        ]
+    },
+    {
+        id: "tripleStack",
+        minDifficulty: 0.55,
+        maxDifficulty: 1,
+        weight: 1,
+        obstacles: [
+            { type: "triple", gap: 0 }
         ]
     }
 ];
@@ -644,17 +682,26 @@ function getWeightedRandomPattern(availablePatterns) {
 
 function selectPattern() {
     const difficulty = getDifficultyLevel();
-    const availablePatterns = patternLibrary.filter((pattern) => (
+    let availablePatterns = patternLibrary.filter((pattern) => (
         difficulty >= pattern.minDifficulty &&
         difficulty <= pattern.maxDifficulty &&
         pattern.id !== lastPatternId
     ));
 
     const bottleOnMap = obstacles.some((obstacle) => obstacle.type === "bottle");
+    const tripleOnMap = obstacles.some((obstacle) => obstacle.type === "triple");
+
+    if (tripleOnMap) {
+        availablePatterns = availablePatterns.filter((pattern) => (
+            pattern.obstacles.every((part) => part.type !== "bottle")
+        ));
+    }
 
     if (bottleOnMap) {
         const saferPatterns = availablePatterns.filter((pattern) => (
-            pattern.obstacles.length === 1 && pattern.obstacles[0].type !== "bottle"
+            pattern.obstacles.length === 1 &&
+            pattern.obstacles[0].type !== "bottle" &&
+            pattern.obstacles[0].type !== "triple"
         ));
 
         if (saferPatterns.length > 0) {
@@ -670,7 +717,7 @@ function selectPattern() {
 }
 
 function getObstacleSpacing(type) {
-    const reactionFrames = type === "large" ? 72 : 66;
+    const reactionFrames = type === "large" || type === "triple" ? 78 : 66;
     return Math.round(gameSpeed * reactionFrames + (type === "large" ? 230 : 190));
 }
 
@@ -703,7 +750,10 @@ function createObstacle(type, x) {
 
     // Posição Y especial para a botija
     if (type === 'bottle') {
-        obstacle.y = 52 + Math.random() * 82; // Sobe a botija e mantém alguma variação
+        const apexY = groundY - maxJumpRise;
+        const minY = Math.max(40, apexY + 5);
+        const maxY = Math.min(groundY - 110, apexY + 65);
+        obstacle.y = minY + Math.random() * Math.max(0, maxY - minY);
     }
 
     return obstacle;
@@ -718,7 +768,7 @@ function spawnPattern() {
     let previousPlaced = rightmostObstacle ? {
         x: rightmostObstacle.x,
         width: rightmostObstacle.width,
-        type: rightmostObstacle.width > 28 ? "large" : "small"
+        type: rightmostObstacle.type
     } : null;
 
     for (const part of pattern.obstacles) {
@@ -795,6 +845,9 @@ function resetGame() {
     distanceTraveled = 0;
     floorOffset = 0;
     duckInputActive = false;
+    missedEasterEggMessageTimer = 0;
+    missedEasterEggMessageText = "";
+    leftInputPrevActive = false;
     specialBackgroundTriggered = false;
     specialBackgroundEndTime = 0;
     nextSpawnDistance = 220;
@@ -917,6 +970,17 @@ function update() {
     
     const isMovingLeftForEasterEgg = Math.floor(score) < 200 && leftInputActive && gameState === 'PLAYING';
 
+    const leftTriggered = leftInputActive && !leftInputPrevActive;
+    if (leftTriggered && Math.floor(score) >= 200) {
+        missedEasterEggMessageTimer = 150;
+        missedEasterEggMessageText = missedEasterEggMessages[Math.floor(Math.random() * missedEasterEggMessages.length)];
+    }
+    leftInputPrevActive = leftInputActive;
+
+    if (missedEasterEggMessageTimer > 0) {
+        missedEasterEggMessageTimer--;
+    }
+
     if (!isMovingLeftForEasterEgg) {
         // Aumenta velocidade gradualmente
         gameSpeed += speedIncrease;
@@ -1031,6 +1095,17 @@ function draw() {
                 obs.x, obs.y,
                 config.width, config.height // Usa o tamanho reduzido
             );
+        } else if (obs.type === 'triple') {
+            const barrelW = obstacleTypes.small.width;
+            const barrelH = obstacleTypes.small.height;
+            const img = obstacleTypes.triple.img;
+            const topX = obs.x + barrelW / 2;
+            const topY = obs.y;
+            const bottomY = obs.y + barrelH;
+
+            ctx.drawImage(img, topX, topY, barrelW, barrelH);
+            ctx.drawImage(img, obs.x, bottomY, barrelW, barrelH);
+            ctx.drawImage(img, obs.x + barrelW, bottomY, barrelW, barrelH);
         } else {
             ctx.drawImage(obs.img, obs.x, obs.y, obs.width, obs.height);
         }
@@ -1040,6 +1115,19 @@ function draw() {
     player.draw();
 
     drawScoreboard();
+    if (missedEasterEggMessageTimer > 0 && missedEasterEggMessageText) {
+        ctx.save();
+        const alpha = Math.min(1, missedEasterEggMessageTimer / 25);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(canvas.width / 2 - 220, 78, 440, 44);
+        ctx.fillStyle = "white";
+        ctx.font = "bold 22px Courier New";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(missedEasterEggMessageText, canvas.width / 2, 100);
+        ctx.restore();
+    }
 
     // Ecrãs de Estado
     if (gameState === 'START') {
