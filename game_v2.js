@@ -421,11 +421,12 @@ flagsEmojiImage.src = "imagens reais/flags_emoji.png";
 
 const emojiSequences = [
     
-    { type: "image", image: flagsEmojiImage },
     { type: "emoji", text: "🎛️🧠" },
-    { type: "emoji", text: "🚫👐🏼" },
-    { type: "emoji", text: "👃🏼" },
-    { type: "emoji", text: "😈❤️‍🔥" }
+    { type: "emoji", text: "👐🏼👥" },
+    { type: "emoji", text: "👩🏼💍" },
+    { type: "emoji", text: "😈❤️‍🔥" },
+    { type: "image", image: flagsEmojiImage }
+
 ];
 const emojiTriggerIntervalPoints = 1500;
 const emojiDurationPoints = 500;
