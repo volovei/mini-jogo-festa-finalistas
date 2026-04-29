@@ -410,14 +410,48 @@ const missedEasterEggMessages = [
     "Perdeste a chance!",
     "Isso era antes dos 200..."
 ];
-const defaultBackgroundImage = "url('imagens reais/noite_de_pato.jpg')";
-const specialBackgroundImage = "url('imagens reais/terraqueo.jpeg')";
-const specialBackgroundTriggerScore = 1000;
-const specialBackgroundDurationMs = 2200;
-let specialBackgroundTriggered = false;
-let specialBackgroundEndTime = 0;
 
 const nightBackground = document.getElementById('night-background');
+if (nightBackground) {
+    nightBackground.classList.remove('active');
+}
+
+const emojiSequences = [
+    "🇨🇻🇦🇴🇵🇹",
+    "🎛️🧠",
+    "🚫👐🏼",
+    "👃🏼",
+    "😈❤️‍🔥"
+];
+const emojiTriggerIntervalPoints = 1500;
+const emojiDurationPoints = 500;
+const emojiFadePoints = 110;
+
+function smoothstep(t) {
+    const clamped = Math.max(0, Math.min(1, t));
+    return clamped * clamped * (3 - 2 * clamped);
+}
+
+function getEmojiOverlayForScore(scoreValue) {
+    const currentScore = Math.floor(scoreValue);
+    const segmentStart = Math.floor(currentScore / emojiTriggerIntervalPoints) * emojiTriggerIntervalPoints;
+    if (segmentStart === 0) return null;
+
+    const withinSegment = currentScore - segmentStart;
+    if (withinSegment < 0 || withinSegment >= emojiDurationPoints) return null;
+
+    const cycleIndex = (segmentStart / emojiTriggerIntervalPoints) - 1;
+    const sequence = emojiSequences[cycleIndex % emojiSequences.length];
+
+    let alpha = 1;
+    if (withinSegment < emojiFadePoints) {
+        alpha = smoothstep(withinSegment / emojiFadePoints);
+    } else if (withinSegment > emojiDurationPoints - emojiFadePoints) {
+        alpha = smoothstep((emojiDurationPoints - withinSegment) / emojiFadePoints);
+    }
+
+    return { sequence, alpha };
+}
 
 const obstacleTypes = {
     small: {
@@ -812,33 +846,6 @@ function saveHighScore() {
     }
 }
 
-function handleBackgroundTransition() {
-    const currentScore = Math.floor(score);
-    const now = performance.now();
-    const cycleLength = 2000; // O ciclo repete a cada 2000 pontos
-    const scoreInCycle = currentScore % cycleLength;
-
-    if (!specialBackgroundTriggered && currentScore >= specialBackgroundTriggerScore) {
-        specialBackgroundTriggered = true;
-        specialBackgroundEndTime = now + specialBackgroundDurationMs;
-    }
-
-    if (specialBackgroundEndTime > now) {
-        nightBackground.style.backgroundImage = specialBackgroundImage;
-        nightBackground.classList.add('active');
-        return;
-    }
-
-    nightBackground.style.backgroundImage = defaultBackgroundImage;
-
-    // Lógica: 0-499 (off), 500-1499 (on), 1500-1999 (off)
-    if (scoreInCycle >= 500 && scoreInCycle < 1500) {
-        nightBackground.classList.add('active');
-    } else {
-        nightBackground.classList.remove('active');
-    }
-}
-
 function resetGame() {
     score = 0;
     gameSpeed = initialSpeed;
@@ -848,8 +855,6 @@ function resetGame() {
     missedEasterEggMessageTimer = 0;
     missedEasterEggMessageText = "";
     leftInputPrevActive = false;
-    specialBackgroundTriggered = false;
-    specialBackgroundEndTime = 0;
     nextSpawnDistance = 220;
     lastPatternId = "singleSmall";
     newHighScoreAchieved = false;
@@ -865,8 +870,9 @@ function resetGame() {
     easterEggTimer = 0;
     easterEggAnimationFrame = 0;
     leftInputActive = false;
-    nightBackground.style.backgroundImage = defaultBackgroundImage;
-    nightBackground.classList.remove('active');
+    if (nightBackground) {
+        nightBackground.classList.remove('active');
+    }
     setActivePlayerAnimation("run", { restart: true });
     gameState = 'PLAYING';
 }
@@ -999,8 +1005,6 @@ function update() {
         }
     }
 
-    handleBackgroundTransition();
-
     player.update();
     syncPlayerAnimation();
 
@@ -1127,6 +1131,29 @@ function draw() {
         ctx.textBaseline = "middle";
         ctx.fillText(missedEasterEggMessageText, canvas.width / 2, 100);
         ctx.restore();
+    }
+
+    if (gameState === 'PLAYING') {
+        const overlay = getEmojiOverlayForScore(score);
+        if (overlay && overlay.sequence) {
+            ctx.save();
+            ctx.globalAlpha = overlay.alpha;
+            ctx.font = "64px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            const y = 155;
+            const paddingX = 26;
+            const paddingY = 14;
+            const textWidth = ctx.measureText(overlay.sequence).width;
+            const boxWidth = textWidth + paddingX * 2;
+            const boxHeight = 64 + paddingY * 2;
+            const x = (canvas.width - boxWidth) / 2;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+            ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
+            ctx.fillStyle = "white";
+            ctx.fillText(overlay.sequence, canvas.width / 2, y);
+            ctx.restore();
+        }
     }
 
     // Ecrãs de Estado
