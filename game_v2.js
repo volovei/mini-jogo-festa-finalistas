@@ -374,7 +374,7 @@ let easterEggActive = false;
 let easterEggTimer = 0;
 let easterEggAnimationFrame = 0;
 let leftInputActive = false;
-const initialSpeed = 10.4;
+const initialSpeed = 5.4;
 const speedIncrease = 0.00005;
 const riseGravity = 0.34;
 const fallGravity = 0.78;
@@ -416,12 +416,16 @@ if (nightBackground) {
     nightBackground.classList.remove('active');
 }
 
+const flagsEmojiImage = new Image();
+flagsEmojiImage.src = "imagens reais/flags_emoji.png";
+
 const emojiSequences = [
-    "🇨🇻🇦🇴🇵🇹",
-    "🎛️🧠",
-    "🚫👐🏼",
-    "👃🏼",
-    "😈❤️‍🔥"
+    
+    { type: "image", image: flagsEmojiImage },
+    { type: "emoji", text: "🎛️🧠" },
+    { type: "emoji", text: "🚫👐🏼" },
+    { type: "emoji", text: "👃🏼" },
+    { type: "emoji", text: "😈❤️‍🔥" }
 ];
 const emojiTriggerIntervalPoints = 1500;
 const emojiDurationPoints = 500;
@@ -452,6 +456,47 @@ function getEmojiOverlayForScore(scoreValue) {
 
     return { sequence, alpha };
 }
+
+let podiumEntries = [];
+let podiumLoaded = false;
+
+function normalizeHandle(handle) {
+    if (!handle) return "";
+    if (handle.startsWith("@")) return handle;
+    return `@${handle}`;
+}
+
+function startPodiumListener() {
+    const rtdb = window.rtdb;
+    const db = window.firebaseRTDB;
+
+    if (!rtdb || !db || !rtdb.query || !rtdb.orderByChild || !rtdb.limitToLast) {
+        setTimeout(startPodiumListener, 500);
+        return;
+    }
+
+    const { ref, onValue, query, orderByChild, limitToLast } = rtdb;
+    const usersRef = ref(db, "users");
+    const top3Query = query(usersRef, orderByChild("highScore"), limitToLast(3));
+
+    onValue(top3Query, (snapshot) => {
+        const entries = [];
+        snapshot.forEach((childSnapshot) => {
+            const value = childSnapshot.val() || {};
+            const scoreValue = Number(value.highScore || 0);
+            const handleValue = normalizeHandle(String(value.handle || childSnapshot.key || ""));
+            if (handleValue) {
+                entries.push({ handle: handleValue, score: scoreValue });
+            }
+        });
+
+        entries.sort((a, b) => b.score - a.score);
+        podiumEntries = entries.slice(0, 3);
+        podiumLoaded = true;
+    });
+}
+
+startPodiumListener();
 
 const obstacleTypes = {
     small: {
@@ -1136,22 +1181,39 @@ function draw() {
     if (gameState === 'PLAYING') {
         const overlay = getEmojiOverlayForScore(score);
         if (overlay && overlay.sequence) {
+            const sequence = overlay.sequence;
             ctx.save();
             ctx.globalAlpha = overlay.alpha;
-            ctx.font = "64px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             const y = 155;
             const paddingX = 26;
             const paddingY = 14;
-            const textWidth = ctx.measureText(overlay.sequence).width;
-            const boxWidth = textWidth + paddingX * 2;
-            const boxHeight = 64 + paddingY * 2;
-            const x = (canvas.width - boxWidth) / 2;
-            ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-            ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
-            ctx.fillStyle = "white";
-            ctx.fillText(overlay.sequence, canvas.width / 2, y);
+            let boxWidth = 0;
+            let boxHeight = 0;
+
+            if (sequence.type === "image" && sequence.image && sequence.image.complete && sequence.image.naturalWidth > 0) {
+                const targetHeight = 78;
+                const scale = targetHeight / sequence.image.naturalHeight;
+                const drawWidth = sequence.image.naturalWidth * scale;
+                const drawHeight = targetHeight;
+                boxWidth = drawWidth + paddingX * 2;
+                boxHeight = drawHeight + paddingY * 2;
+                const x = (canvas.width - boxWidth) / 2;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+                ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
+                ctx.drawImage(sequence.image, (canvas.width - drawWidth) / 2, y - drawHeight / 2, drawWidth, drawHeight);
+            } else if (sequence.type === "emoji" && sequence.text) {
+                ctx.font = "64px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif";
+                const textWidth = ctx.measureText(sequence.text).width;
+                boxWidth = textWidth + paddingX * 2;
+                boxHeight = 64 + paddingY * 2;
+                const x = (canvas.width - boxWidth) / 2;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+                ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
+                ctx.fillStyle = "white";
+                ctx.fillText(sequence.text, canvas.width / 2, y);
+            }
             ctx.restore();
         }
     }
@@ -1257,6 +1319,42 @@ function drawScoreboard() {
     ctx.restore();
 }
 
+function drawPodium() {
+    const panelWidth = 520;
+    const panelHeight = 118;
+    const x = (canvas.width - panelWidth) / 2;
+    const y = canvas.height - panelHeight - 18;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillRect(x, y, panelWidth, panelHeight);
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.font = "bold 20px Courier New";
+    ctx.fillText("PÓDIO", canvas.width / 2, y + 10);
+
+    ctx.font = "18px Courier New";
+    ctx.textAlign = "left";
+    const startY = y + 40;
+    const lineHeight = 24;
+
+    for (let i = 0; i < 3; i++) {
+        const rank = i + 1;
+        const entry = podiumEntries[i];
+        let line = `${rank}. -`;
+        if (!podiumLoaded) {
+            line = `${rank}. ...`;
+        } else if (entry && entry.handle) {
+            line = `${rank}. ${entry.handle}  ${Math.floor(entry.score)}`;
+        }
+        ctx.fillText(line, x + 18, startY + i * lineHeight);
+    }
+
+    ctx.restore();
+}
+
 function drawOverlay(text) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1322,6 +1420,10 @@ function drawOverlay(text) {
             ctx.font = "bold 18px Courier New";
             ctx.fillText("NEW BEST SCORE", canvas.width / 2, canvas.height / 2 + 34);
         }
+    }
+
+    if (gameState === "START" || gameState === "GAMEOVER") {
+        drawPodium();
     }
 }
 
