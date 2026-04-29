@@ -181,7 +181,7 @@ async function saveScoreToRTDB(newScore) {
         return;
     }
     try {
-        const { ref, update } = window.rtdb;
+        const { ref, runTransaction, update } = window.rtdb;
         const db = window.firebaseRTDB;
         
         const cleanHandle = currentUserHandle.toLowerCase()
@@ -190,12 +190,27 @@ async function saveScoreToRTDB(newScore) {
             
         const userRef = ref(db, 'users/' + cleanHandle);
         
-        console.log("A atualizar score em 'users/':", cleanHandle, "Valor:", Math.floor(newScore));
-        
-        await update(userRef, {
-            highScore: Math.floor(newScore),
-            updatedAt: new Date().toISOString()
-        });
+        const scoreValue = Math.floor(newScore);
+        console.log("A atualizar score em 'users/':", cleanHandle, "Valor:", scoreValue);
+
+        if (runTransaction) {
+            await runTransaction(userRef, (currentData) => {
+                const data = currentData || {};
+                const currentHighScore = Number(data.highScore || 0);
+                return {
+                    ...data,
+                    handle: currentUserHandle,
+                    highScore: Math.max(currentHighScore, scoreValue),
+                    updatedAt: new Date().toISOString()
+                };
+            });
+        } else {
+            await update(userRef, {
+                handle: currentUserHandle,
+                highScore: scoreValue,
+                updatedAt: new Date().toISOString()
+            });
+        }
         console.log("Score atualizado com SUCESSO!");
     } catch (e) {
         console.error("ERRO ao atualizar score no RTDB: ", e);
@@ -460,6 +475,7 @@ function getEmojiOverlayForScore(scoreValue) {
 
 let podiumEntries = [];
 let podiumLoaded = false;
+let podiumQuery = null;
 
 function normalizeHandle(handle) {
     if (!handle) return "";
@@ -479,6 +495,7 @@ function startPodiumListener() {
     const { ref, onValue, query, orderByChild, limitToLast } = rtdb;
     const usersRef = ref(db, "users");
     const top3Query = query(usersRef, orderByChild("highScore"), limitToLast(3));
+    podiumQuery = top3Query;
 
     onValue(top3Query, (snapshot) => {
         const entries = [];
@@ -498,6 +515,31 @@ function startPodiumListener() {
 }
 
 startPodiumListener();
+
+async function refreshPodiumOnce() {
+    const rtdb = window.rtdb;
+    if (!rtdb || !rtdb.get || !podiumQuery) {
+        return;
+    }
+
+    try {
+        const snapshot = await rtdb.get(podiumQuery);
+        const entries = [];
+        snapshot.forEach((childSnapshot) => {
+            const value = childSnapshot.val() || {};
+            const scoreValue = Number(value.highScore || 0);
+            const handleValue = normalizeHandle(String(value.handle || childSnapshot.key || ""));
+            if (handleValue) {
+                entries.push({ handle: handleValue, score: scoreValue });
+            }
+        });
+        entries.sort((a, b) => b.score - a.score);
+        podiumEntries = entries.slice(0, 3);
+        podiumLoaded = true;
+    } catch (e) {
+        console.error("ERRO ao atualizar pódio: ", e);
+    }
+}
 
 const obstacleTypes = {
     small: {
@@ -883,7 +925,10 @@ function saveHighScore() {
     const currentScore = Math.floor(score);
     
     // Guardar no Firebase RTDB sempre que termina para testar ligação
-    saveScoreToRTDB(currentScore);
+    void (async () => {
+        await saveScoreToRTDB(currentScore);
+        await refreshPodiumOnce();
+    })();
 
     if (currentScore > highScore) {
         highScore = currentScore;
