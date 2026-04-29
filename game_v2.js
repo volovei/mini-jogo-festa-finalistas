@@ -408,7 +408,7 @@ const missedEasterEggMessages = [
     "Se fosse antes...",
     "Agora já não dá...",
     "Perdeste a chance!",
-    "Isso era antes dos 200..."
+    "Não agora..."
 ];
 
 const nightBackground = document.getElementById('night-background');
