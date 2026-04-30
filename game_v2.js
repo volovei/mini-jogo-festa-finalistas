@@ -1233,30 +1233,15 @@ function draw() {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             const y = 155;
-            const paddingX = 26;
-            const paddingY = 14;
-            let boxWidth = 0;
-            let boxHeight = 0;
 
             if (sequence.type === "image" && sequence.image && sequence.image.complete && sequence.image.naturalWidth > 0) {
                 const targetHeight = 78;
                 const scale = targetHeight / sequence.image.naturalHeight;
                 const drawWidth = sequence.image.naturalWidth * scale;
                 const drawHeight = targetHeight;
-                boxWidth = drawWidth + paddingX * 2;
-                boxHeight = drawHeight + paddingY * 2;
-                const x = (canvas.width - boxWidth) / 2;
-                ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-                ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
                 ctx.drawImage(sequence.image, (canvas.width - drawWidth) / 2, y - drawHeight / 2, drawWidth, drawHeight);
             } else if (sequence.type === "emoji" && sequence.text) {
                 ctx.font = "64px Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif";
-                const textWidth = ctx.measureText(sequence.text).width;
-                boxWidth = textWidth + paddingX * 2;
-                boxHeight = 64 + paddingY * 2;
-                const x = (canvas.width - boxWidth) / 2;
-                ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-                ctx.fillRect(x, y - boxHeight / 2, boxWidth, boxHeight);
                 ctx.fillStyle = "white";
                 ctx.fillText(sequence.text, canvas.width / 2, y);
             }
