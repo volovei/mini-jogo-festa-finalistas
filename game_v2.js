@@ -376,7 +376,7 @@ gameoverImage.src = "imagens reais/dancinha_do_jamal_lobo.png";
 
 // Carregamento da imagem do Easter egg - Artista revelado
 const easterEggImage = new Image();
-easterEggImage.src = "artistas/espama.jpg";
+easterEggImage.src = "artistas/bado.jpg";
 
 // Variáveis Globais
 let score = 0;
