@@ -1265,9 +1265,9 @@ function drawEasterEgg() {
 
     // Draw the artist image with dynamic scaling and movement
     if (easterEggImage.complete && easterEggImage.naturalWidth > 0) {
-        const scale = 0.5 + Math.sin(easterEggAnimationFrame * 0.08) * 0.1;
-        const maxWidth = 350;
-        const maxHeight = 350;
+        const scale = 0.68 + Math.sin(easterEggAnimationFrame * 0.06) * 0.04;
+        const maxWidth = 430;
+        const maxHeight = 430;
         let drawWidth = Math.min(easterEggImage.naturalWidth, maxWidth);
         let drawHeight = (drawWidth / easterEggImage.naturalWidth) * easterEggImage.naturalHeight;
         
@@ -1281,11 +1281,11 @@ function drawEasterEgg() {
         drawHeight *= scale;
 
         // Dynamic position with slight movement
-        const offsetX = Math.sin(easterEggAnimationFrame * 0.06) * 20;
-        const offsetY = Math.cos(easterEggAnimationFrame * 0.06) * 15;
+        const offsetX = Math.sin(easterEggAnimationFrame * 0.045) * 8;
+        const offsetY = Math.cos(easterEggAnimationFrame * 0.045) * 6;
         
         const x = (canvas.width - drawWidth) / 2 + offsetX;
-        const y = 30 + offsetY;
+        const y = (canvas.height - drawHeight) / 2 - 55 + offsetY;
 
         // Glow effect behind image
         ctx.shadowBlur = 30 + Math.sin(easterEggAnimationFrame * 0.1) * 15;
@@ -1297,8 +1297,8 @@ function drawEasterEgg() {
         ctx.shadowBlur = 0;
 
         // Text with dynamic effects
-        const textY = y + drawHeight + 40;
-        const textScale = 1 + Math.sin(easterEggAnimationFrame * 0.1) * 0.1;
+        const textY = y + drawHeight + 48;
+        const textScale = 1 + Math.sin(easterEggAnimationFrame * 0.07) * 0.03;
         
         ctx.save();
         ctx.translate(canvas.width / 2, textY);
@@ -1307,7 +1307,7 @@ function drawEasterEgg() {
         // Rainbow text
         const hue = (easterEggAnimationFrame * 2) % 360;
         ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
-        ctx.font = "bold 42px Courier New";
+        ctx.font = "bold 52px Courier New";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
