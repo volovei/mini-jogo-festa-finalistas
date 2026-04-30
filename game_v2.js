@@ -1284,8 +1284,14 @@ function drawEasterEgg() {
         const offsetX = Math.sin(easterEggAnimationFrame * 0.045) * 8;
         const offsetY = Math.cos(easterEggAnimationFrame * 0.045) * 6;
         
+        const textFontSize = 52;
+        const textHeight = 58;
+        const gap = 34;
+        const groupHeight = drawHeight + gap + textHeight;
+        const groupTop = (canvas.height - groupHeight) / 2;
+
         const x = (canvas.width - drawWidth) / 2 + offsetX;
-        const y = (canvas.height - drawHeight) / 2 - 55 + offsetY;
+        const y = groupTop + offsetY;
 
         // Glow effect behind image
         ctx.shadowBlur = 30 + Math.sin(easterEggAnimationFrame * 0.1) * 15;
@@ -1297,7 +1303,7 @@ function drawEasterEgg() {
         ctx.shadowBlur = 0;
 
         // Text with dynamic effects
-        const textY = y + drawHeight + 48;
+        const textY = y + drawHeight + gap + textHeight / 2;
         const textScale = 1 + Math.sin(easterEggAnimationFrame * 0.07) * 0.03;
         
         ctx.save();
@@ -1307,7 +1313,7 @@ function drawEasterEgg() {
         // Rainbow text
         const hue = (easterEggAnimationFrame * 2) % 360;
         ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
-        ctx.font = "bold 52px Courier New";
+        ctx.font = `bold ${textFontSize}px Courier New`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
