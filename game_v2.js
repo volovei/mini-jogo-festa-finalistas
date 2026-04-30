@@ -416,15 +416,6 @@ let lastPatternId = "singleSmall";
 let newHighScoreAchieved = false;
 let floorOffset = 0;
 let duckInputActive = false;
-let missedEasterEggMessageTimer = 0;
-let missedEasterEggMessageText = "";
-let leftInputPrevActive = false;
-const missedEasterEggMessages = [
-    "Se fosse antes...",
-    "Agora já não dá...",
-    "Perdeste a chance!",
-    "Não agora..."
-];
 
 const nightBackground = document.getElementById('night-background');
 if (nightBackground) {
@@ -943,9 +934,6 @@ function resetGame() {
     distanceTraveled = 0;
     floorOffset = 0;
     duckInputActive = false;
-    missedEasterEggMessageTimer = 0;
-    missedEasterEggMessageText = "";
-    leftInputPrevActive = false;
     nextSpawnDistance = 220;
     lastPatternId = "singleSmall";
     newHighScoreAchieved = false;
@@ -1066,17 +1054,6 @@ function update() {
     frameCount++;
     
     const isMovingLeftForEasterEgg = Math.floor(score) < 200 && leftInputActive && gameState === 'PLAYING';
-
-    const leftTriggered = leftInputActive && !leftInputPrevActive;
-    if (leftTriggered && Math.floor(score) >= 200) {
-        missedEasterEggMessageTimer = 150;
-        missedEasterEggMessageText = missedEasterEggMessages[Math.floor(Math.random() * missedEasterEggMessages.length)];
-    }
-    leftInputPrevActive = leftInputActive;
-
-    if (missedEasterEggMessageTimer > 0) {
-        missedEasterEggMessageTimer--;
-    }
 
     if (!isMovingLeftForEasterEgg) {
         // Aumenta velocidade gradualmente
@@ -1210,19 +1187,6 @@ function draw() {
     player.draw();
 
     drawScoreboard();
-    if (missedEasterEggMessageTimer > 0 && missedEasterEggMessageText) {
-        ctx.save();
-        const alpha = Math.min(1, missedEasterEggMessageTimer / 25);
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-        ctx.fillRect(canvas.width / 2 - 220, 78, 440, 44);
-        ctx.fillStyle = "white";
-        ctx.font = "bold 22px Courier New";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(missedEasterEggMessageText, canvas.width / 2, 100);
-        ctx.restore();
-    }
 
     if (gameState === 'PLAYING') {
         const overlay = getEmojiOverlayForScore(score);
