@@ -1321,7 +1321,7 @@ function drawEasterEgg() {
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
         
-        ctx.fillText("Consegues descobrir quem é?", 0, 0);
+        ctx.fillText("Consegues descobrir quem é?Artista revelado!!!", 0, 0);
         
         ctx.restore();
 
